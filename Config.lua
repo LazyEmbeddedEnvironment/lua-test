@@ -1,23 +1,24 @@
 #!/usr/bin/lua
+local pretty = require("pl.pretty")
 local appBase = require("AppBase")
 local rapidjson = require("rapidjson")
 local home = os.getenv ( "HOME" )
 local configRecipe = home.."/"..appBase.frameWorkName.."/config/"..appBase.appName
 local configFilePath = configRecipe.."."..appBase.name..".json"
 local config = nil
+local function openConfigFile() return io.open(configFilePath, "r") end
 local function generateConfig()
     local defaultConfig = rapidjson.load(configRecipe..".json")
-    
-    local success, err = rapidjson.dump(defaultConfig, configFilePath)
+    rapidjson.dump(defaultConfig, configFilePath)
+    return openConfigFile()
 end
 local function tryOpenConfig()
-    local file = io.open(configFilePath, "r")
-    if file == nil then generateConfig() return
-    else file:close() end
-    config = rapidjson.load(configFilePath)
+    local file = openConfigFile()
+    local forceReadFile = file and file or generateConfig()
+    config = rapidjson.decode(forceReadFile:read("*all"))
+    forceReadFile:close()
 end
-
 
 tryOpenConfig()
 
-print(config)
+pretty.dump(config)
