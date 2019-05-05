@@ -12,7 +12,8 @@ end
 local AppBase = { 
 	appName = getAppName(),
 	name = args.name,
-	frameWorkName = "friend"
+	frameWorkName = "friend",
+	zmqPort = "5578"
 }
 
 return AppBase

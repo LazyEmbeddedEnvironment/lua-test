@@ -1,0 +1,5 @@
+{
+	".subscribtions": {
+		"bool.Input.instanceName.test": "bool.Output.instanceName.testingPub"	
+	}
+}
