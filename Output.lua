@@ -30,12 +30,6 @@ function Output:send(val)
 end
 
 local out = Output("bool.Output.instanceName.testingPub")
-Output("bool.Output.instanceName.testingPub"):send(true)
-Output("bool.Output.instanceName.testingPub"):send(true)
-Output("bool.Output.instanceName.testingPub"):send(true)
-Output("bool.Output.instanceName.testingPub"):send(true)
-Output("bool.Output.instanceName.testingPub"):send(true)
-Output("bool.Output.instanceName.testingPub"):send(true)
 
 local ztimer  = require "lzmq.timer"
 function sleep(sec)
