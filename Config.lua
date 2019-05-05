@@ -47,6 +47,7 @@ local function tryOpenConfig()
     forceReadFile:close()
     checkForChangedDefaultConfFile()
     rapidjson.dump(config, configFilePath) 
+    return config
 end
 
-tryOpenConfig()
+return tryOpenConfig()
