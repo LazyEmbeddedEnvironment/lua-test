@@ -6,12 +6,18 @@ local home = os.getenv ( "HOME" )
 local configRecipe = home.."/"..appBase.frameWorkName.."/config/"..appBase.appName
 local configFilePath = configRecipe.."."..appBase.name..".json"
 local config = nil
-local function openConfigFile() return io.open(configFilePath, "r") end
-local function getDefaultConfig() return rapidjson.load(configRecipe..".json") end
+local function openConfigFile(path) return io.open(path, "r") end
+local function exampleConfig() return {} end
+local function tryGetDefaultConfig()
+    local defaultConfPath = configRecipe..".json"
+    local file = openConfigFile(defaultConfPath)
+    if not file then rapidjson.dump(exampleConfig(), defaultConfPath) end
+    return rapidjson.load(defaultConfPath) 
+end
 local function generateConfig()
-    local defaultConfig = getDefaultConfig()
+    local defaultConfig = tryGetDefaultConfig()
     rapidjson.dump(defaultConfig, configFilePath)
-    return openConfigFile()
+    return openConfigFile(configFilePath)
 end
 local function insertNewKeysIfKnown(finalConfigTab, defConfigTab)
     local ty1 = type(finalConfigTab)
@@ -31,18 +37,16 @@ local function insertNewKeysIfKnown(finalConfigTab, defConfigTab)
     return true
 end
 local function checkForChangedDefaultConfFile()
-    local defaultConfig = getDefaultConfig()
+    local defaultConfig = tryGetDefaultConfig()
     insertNewKeysIfKnown(config, defaultConfig)
 end
 local function tryOpenConfig()
-    local file = openConfigFile()
+    local file = openConfigFile(configFilePath)
     local forceReadFile = file and file or generateConfig()
     config = rapidjson.decode(forceReadFile:read("*all"))
     forceReadFile:close()
     checkForChangedDefaultConfFile()
     rapidjson.dump(config, configFilePath) 
 end
-
-
 
 tryOpenConfig()
