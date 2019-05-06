@@ -9,9 +9,8 @@ local Input = require('pl.class')() -- Public
 -- Private class
 function _Input:_init()
     self.zmq = require("lzmq")
-    self.zpoller = require("lzmq.poller")
+    self.poller = require("wrappers.Poller")
     self.context = self.zmq.context()
-    self.subscribers = {}
 end
 function _Input:createSubscriber(name, callback)
     print ("subscribing to " .. name)
@@ -20,20 +19,8 @@ function _Input:createSubscriber(name, callback)
         connect   = "tcp://localhost:"..appBase.zmqPort;
     })
     self.zmq.assert(subscriber, err)
-    table.insert(self.subscribers, {name=name, subscriber=subscriber})
-    
-    self:generatePoller()
-    self.poller:add(subscriber, self.zmq.POLLIN, function() 
-        callback(subscriber:recv())
-    end)
-    self.poller:start()
-end
-function _Input:generatePoller()
-    self:destroyPoller()
-    self.poller = self.zpoller.new(#self.subscribers)
-end
-function _Input:destroyPoller()
-    self.poller = self.poller and self.poller:stop() -- stop returns nil, hopefully garbage collected
+
+    self.poller:addSubscriber(subscriber, callback)
 end
 
 local private = _Input() -- hopefully singleton
@@ -50,7 +37,6 @@ end
 
 
 return Input("bool.Input.instanceName.test", function(message) 
-    print ("Received message")
     print (message)
 end)
 

@@ -8,7 +8,7 @@ local Output = require('pl.class')() -- Public
 -- Private class
 function _Output:_init()
     self.zmq = require("lzmq")
-    self.zpoller = require("lzmq.poller")
+    self.poller = require("wrappers.Poller")
     self.context = self.zmq.context()
     local publisher, err = self.context:socket{self.zmq.PUB, bind = "tcp://*:"..appBase.zmqPort}
     self.zmq.assert(publisher, err)
@@ -18,7 +18,7 @@ function _Output:send(name, val)
     self.publisher:sendx(name, tostring(val))
 end
 
-local private = _Output() -- hopefully singleton
+local private = _Output()
 
 function Output:_init(name)
     assert(type(name) == "string", "Output has to be created with a name")
@@ -30,16 +30,22 @@ function Output:send(val)
 end
 
 local out = Output("bool.Output.instanceName.testingPub")
+local out2 = Output("string.Output.instanceName.test2")
 
-local ztimer  = require "lzmq.timer"
-function sleep(sec)
-    ztimer.sleep(sec * 1000)
-end
+local zloop = require("lzmq.loop")
 
-while true do
+local loop = zloop.new(1, ctx)
+
+loop:add_interval(1000, function()
     out:send(true)        
-    sleep (1);
-end
+end)
+
+loop:start()
+
+-- THIS DOES NOT WORK
+loop:add_interval(1000, function()
+    out:send(true)        
+end)
   
 
 
