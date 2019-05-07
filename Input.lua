@@ -34,7 +34,8 @@ function Input:_init(name, callback)
     private:createSubscriber(self.connection, callback)
 end
 
-
+config.insert("myKey.mofo.notsomuch.to.you", {because="i Cant"})
+print("nei")
 
 return Input("bool.Input.instanceName.test", function(message) 
     print (message)

@@ -1,24 +1,31 @@
-#!/usr/bin/lua
-local pretty = require("pl.pretty")
-local appBase = require("AppBase")
-local rapidjson = require("rapidjson")
-local home = os.getenv ( "HOME" )
-local configRecipe = home.."/"..appBase.frameWorkName.."/config/"..appBase.appName
-local configFilePath = configRecipe.."."..appBase.name..".json"
-
-local Config = require('pl.class')() -- Private
+local Config = require("pl.class")() -- Private
+require("pl.stringx").import() -- Inserts penlight functions to standard string table
+-- Config API
+local userMethods = {"insert", "overwrite"}
+function Config:appendUserMethodsToConfig()
+    self.config.insert = self:insert()
+    self.config.overwrite = self:overwrite()
+end
+-- Something that you should not care of
+function Config:_init() 
+    local home = os.getenv("HOME")
+    self.rapidjson = require("rapidjson")
+    local appBase = require("AppBase")
+    self.configRecipe = home.."/"..appBase.frameWorkName.."/config/"..appBase.appName
+    self.configFilePath = self.configRecipe.."."..appBase.name..".json"
+end
 function Config:openConfigFile(path) return io.open(path, "r") end
 function Config:exampleConfig() return {} end
 function Config:tryGetDefaultConfig()
-    local defaultConfPath = configRecipe..".json"
+    local defaultConfPath = self.configRecipe..".json"
     local file = self:openConfigFile(defaultConfPath)
-    if not file then rapidjson.dump(exampleConfig(), defaultConfPath) end
-    return rapidjson.load(defaultConfPath) 
+    if not file then self.rapidjson.dump(exampleConfig(), defaultConfPath) end
+    return self.rapidjson.load(defaultConfPath) 
 end
 function Config:generateConfig()
     local defaultConfig = self:tryGetDefaultConfig()
-    rapidjson.dump(defaultConfig, configFilePath)
-    return self:openConfigFile(configFilePath)
+    self.rapidjson.dump(defaultConfig, self.configFilePath)
+    return self:openConfigFile(self.configFilePath)
 end
 function Config:insertNewKeysIfKnown(finalConfigTab, defConfigTab)
     local ty1 = type(finalConfigTab)
@@ -41,15 +48,86 @@ function Config:checkForChangedDefaultConfFile()
     local defaultConfig = self:tryGetDefaultConfig()
     self:insertNewKeysIfKnown(config, defaultConfig)
 end
-function Config:tryOpenConfig()
-    local file = self:openConfigFile(configFilePath)
+function Config:openConfig()
+    local file = self:openConfigFile(self.configFilePath)
     local forceReadFile = file and file or self:generateConfig()
-    self.config = rapidjson.decode(forceReadFile:read("*all"))
+    self.config = self.rapidjson.decode(forceReadFile:read("*all"))
     forceReadFile:close()
     self:checkForChangedDefaultConfFile()
-    rapidjson.dump(self.config, configFilePath) 
+    self:rewriteConfigFile()
     return self.config
+end
+function Config:rewriteConfigFile( )
+    for _, funcName in ipairs(userMethods) do
+        self.config = table.removeKey(self.config, funcName)
+    end
+    self.rapidjson.dump(self.config, self.configFilePath)
+    self:appendUserMethodsToConfig() 
+end
+
+local pretty = require("pl.pretty")
+function Config:checkKeyValue(key, value)
+    assert(type(key) == "string", "Key has to be a string value, when key is of type "..type(key))
+    assert(type(value) ~= "nil", "Inserted value can not be of type nil")
+end
+function Config:getConfigIterator(inputKey, subKeys)
+    local tableIterator = self.config
+    for i,key in ipairs(subKeys) do
+        if (i == #subKeys) then break end
+        if (type(tableIterator[key]) == "table") then
+            tableIterator = tableIterator[key]
+        elseif (type(tableIterator[key]) == "nil") then
+            tableIterator[key] = {}
+            tableIterator = tableIterator[key]
+        else
+            return false, "Error indexing config table with key " .. inputKey
+        end
+    end
+    return tableIterator
+end
+function Config:insert() return function(key, value)
+    self:checkKeyValue(key, value)
+    local subKeys = key:split('.')
+    local tabIterator, err = self:getConfigIterator(key, subKeys)
+    if tabIterator == false then return false, err end
+    if (type(tabIterator[subKeys[#subKeys]]) == "nil") then
+        tabIterator[subKeys[#subKeys]] = value
+    end
+    self:rewriteConfigFile()
+    pretty.dump(self.config)
+    return true
+end end
+function Config:overwrite() return function(key, value)
+    self:checkKeyValue(key, value)
+    local subKeys = key:split('.')
+    local tabIterator, err = self:getConfigIterator(key, subKeys)
+    if tabIterator == false then return false, err end
+    tabIterator[subKeys[#subKeys]] = value
+    self:rewriteConfigFile()
+    pretty.dump(self.config)
+    return true
+end end
+
+function table.removeKey(t, k) -- https://swfoo.com/2014/07/11/lua-table-remove-by-key/
+	local i = 0
+	local keys, values = {},{}
+	for k,v in pairs(t) do
+		i = i + 1
+		keys[i] = k
+		values[i] = v
+	end
+	while i>0 do
+		if keys[i] == k then
+			table.remove(keys, i)
+			table.remove(values, i)
+			break
+		end
+		i = i - 1
+	end
+	local a = {}
+	for i = 1,#keys do a[keys[i]] = values[i] end
+	return a
 end
 
 local private = Config()
-return private:tryOpenConfig()
+return private:openConfig()
