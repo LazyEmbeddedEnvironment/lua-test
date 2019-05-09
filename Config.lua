@@ -19,12 +19,12 @@ function Config:exampleConfig() return {} end
 function Config:tryGetDefaultConfig()
     local defaultConfPath = self.configRecipe..".json"
     local file = self:openConfigFile(defaultConfPath)
-    if not file then self.rapidjson.dump(exampleConfig(), defaultConfPath) end
+    if not file then self.rapidjson.dump(exampleConfig(), defaultConfPath,{pretty=true}) end
     return self.rapidjson.load(defaultConfPath) 
 end
 function Config:generateConfig()
     local defaultConfig = self:tryGetDefaultConfig()
-    self.rapidjson.dump(defaultConfig, self.configFilePath)
+    self.rapidjson.dump(defaultConfig, self.configFilePath,{pretty=true})
     return self:openConfigFile(self.configFilePath)
 end
 function Config:insertNewKeysIfKnown(finalConfigTab, defConfigTab)
@@ -61,7 +61,7 @@ function Config:rewriteConfigFile( )
     for _, funcName in ipairs(userMethods) do
         self.config = table.removeKey(self.config, funcName)
     end
-    self.rapidjson.dump(self.config, self.configFilePath)
+    self.rapidjson.dump(self.config, self.configFilePath,{pretty=true})
     self:appendUserMethodsToConfig() 
 end
 
@@ -70,6 +70,25 @@ function Config:checkKeyValue(key, value)
     assert(type(key) == "string", "Key has to be a string value, when key is of type "..type(key))
     assert(type(value) ~= "nil", "Inserted value can not be of type nil")
 end
+-- key division is "|" which means the key="subs.boat.first|haven.gate|entry" will create the following
+-- { "subs":{:"boat":{"first":{ "haven.gate":{ "entry":"YOURValue" } } } } }
+function Config:extractKeyToObjectStructure(key) 
+    local divisions = key:split('|')
+    local createObj = true
+    local keys = {}
+    for _, subKey in ipairs(divisions) do
+        if (createObj) then
+            local subSubKeys = subKey:split('.')
+            for _, subSubKey in ipairs(subSubKeys) do
+                table.insert(keys, subSubKey)
+            end
+        else
+            table.insert(keys, subKey)
+        end
+        createObj = not createObj
+    end
+    return keys
+end 
 function Config:getConfigIterator(inputKey, subKeys)
     local tableIterator = self.config
     for i,key in ipairs(subKeys) do
@@ -83,28 +102,28 @@ function Config:getConfigIterator(inputKey, subKeys)
             return false, "Error indexing config table with key " .. inputKey
         end
     end
+    print("\n\n\n")
+    pretty.dump(self.config)
     return tableIterator
 end
 function Config:insert() return function(key, value)
     self:checkKeyValue(key, value)
-    local subKeys = key:split('.')
+    local subKeys = self:extractKeyToObjectStructure(key)
     local tabIterator, err = self:getConfigIterator(key, subKeys)
     if tabIterator == false then return false, err end
     if (type(tabIterator[subKeys[#subKeys]]) == "nil") then
         tabIterator[subKeys[#subKeys]] = value
     end
     self:rewriteConfigFile()
-    pretty.dump(self.config)
     return true
 end end
 function Config:overwrite() return function(key, value)
     self:checkKeyValue(key, value)
-    local subKeys = key:split('.')
+    local subKeys = self:extractKeyToObjectStructure(key)
     local tabIterator, err = self:getConfigIterator(key, subKeys)
     if tabIterator == false then return false, err end
     tabIterator[subKeys[#subKeys]] = value
     self:rewriteConfigFile()
-    pretty.dump(self.config)
     return true
 end end
 

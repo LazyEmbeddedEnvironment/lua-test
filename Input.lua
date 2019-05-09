@@ -29,18 +29,21 @@ function Input:_init(name, callback)
     assert(type(name) == "string", "Input has to be created with a name")
     if callback then assert(type(callback) == "function", "Input has to be created with a name") end
     self.name = name
+    config.insert("|.subscribtions||"..name, "disconnected")
     self.connection = config[".subscribtions"][self.name]
     if not self.connection then print("Input "..self.name.." is disconnected") return end
     private:createSubscriber(self.connection, callback)
 end
 
 config.insert("myKey.mofo.notsomuch.to.you", {because="i Cant"})
-print("nei")
 
-return Input("bool.Input.instanceName.test", function(message) 
+Input("bool.Input.instanceName.test", function(message) 
     print (message)
 end)
 
+Input("bool.Input.instanceName.test.gate.1", function(message) 
+    print (message)
+end)
 
 
 
