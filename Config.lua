@@ -19,7 +19,7 @@ function Config:exampleConfig() return {} end
 function Config:tryGetDefaultConfig()
     local defaultConfPath = self.configRecipe..".json"
     local file = self:openConfigFile(defaultConfPath)
-    if not file then self.rapidjson.dump(exampleConfig(), defaultConfPath,{pretty=true}) end
+    if not file then self.rapidjson.dump(self:exampleConfig(), defaultConfPath,{pretty=true}) end
     return self.rapidjson.load(defaultConfPath) 
 end
 function Config:generateConfig()

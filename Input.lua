@@ -3,16 +3,19 @@
 local config = require("Config")
 local appBase = require("AppBase")
 
-local _Input = require('pl.class')() -- Private
-local Input = require('pl.class')() -- Public
+local InputCollector = require('pl.class')() -- Private
+local InputCreator = require('pl.class')() -- Public
 
 -- Private class
-function _Input:_init()
+function InputCollector:_init()
     self.zmq = require("lzmq")
-    self.poller = require("wrappers.Poller")
+    self.poller = require("wrappers.Loop")
     self.context = self.zmq.context()
+    config.insert("|.subscribtions||.config|maxInputs", 128)
+    local maxInputs = config[".subscribtions"][".config"]["maxInputs"]
+    self.poller:generatePoller(maxInputs)
 end
-function _Input:createSubscriber(name, callback)
+function InputCollector:createSubscriber(name, callback)
     print ("subscribing to " .. name)
     local subscriber, err = self.context:socket(self.zmq.SUB, {
         subscribe = name;
@@ -23,27 +26,18 @@ function _Input:createSubscriber(name, callback)
     self.poller:addSubscriber(subscriber, callback)
 end
 
-local private = _Input() -- hopefully singleton
+local inputCollection = InputCollector() -- hopefully singleton
 
-function Input:_init(name, callback)
+function InputCreator:_init(name, callback)
     assert(type(name) == "string", "Input has to be created with a name")
     if callback then assert(type(callback) == "function", "Input has to be created with a name") end
     self.name = name
     config.insert("|.subscribtions||"..name, "disconnected")
     self.connection = config[".subscribtions"][self.name]
     if not self.connection then print("Input "..self.name.." is disconnected") return end
-    private:createSubscriber(self.connection, callback)
+    inputCollection:createSubscriber(self.connection, callback)
 end
 
-config.insert("myKey.mofo.notsomuch.to.you", {because="i Cant"})
-
-Input("bool.Input.instanceName.test", function(message) 
-    print (message)
-end)
-
-Input("bool.Input.instanceName.test.gate.1", function(message) 
-    print (message)
-end)
-
+return InputCreator
 
 
